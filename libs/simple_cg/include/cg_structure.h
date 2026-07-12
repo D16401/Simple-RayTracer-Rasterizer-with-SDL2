@@ -74,7 +74,7 @@ private:
 
 enum class ObjectType : uint8_t {
     NONE,
-    Sphere,          //球体
+    Sphere,    //球体
     Plane,     //平面
 };
 class Object{
@@ -82,21 +82,21 @@ public:
     Object(ObjectType type): type(type){}
     //getter
     Vec3 getPosition() const {return position;}
-    SDL_Color getColor() const {return color;}
+    uint32_t getColor() const {return color;}
     int getSpecular() const {return specular;}
     float getReflectivity() const {return reflectivity;}
     ObjectType getType() const {return type;}
     virtual Vec3 getNormal(const Vec3& Hitpoint) const = 0;
     //setter
     void setPosition(Vec3 Obj_position){position = Obj_position;}
-    void setColor(SDL_Color Obj_color){color = Obj_color;};
+    void setColor(uint32_t Obj_color){color = Obj_color;};
     void setSpecular(int s){specular = s;}
     void setReflectivity(float r){reflectivity = r;}
     //virtual interaction
     virtual bool intersectTest(const Ray& ray, float& return_distance) const = 0;
 private:
     Vec3 position = Vec3(0.0f, 0.0f, 0.0f);
-    SDL_Color color = {0, 0, 0, 255};
+    uint32_t color = 0x000000FF;
     int specular = -1;
     float reflectivity = 0;
     ObjectType type = ObjectType::NONE;
@@ -177,18 +177,18 @@ private:
 class Scene{
 public:
     //getter
-    SDL_Color getBackgroundColor() const {return backgroundColor;}//返回Scene实例的背景色
+    uint32_t getBackgroundColor() const {return backgroundColor;}//返回Scene实例的背景色
     float getAmbientLight() const {return std::clamp(AmbientLight_intensity, 0.f, 1.f);}//返回当前scene的环境光强
     const std::vector<std::unique_ptr<Object>>& getObjectPtrs() const {return ObjectPtrs;}
     const std::vector<std::unique_ptr<Light>>& getLightPtrs() const {return LightPtrs;}
     //setter
     void setAmbientLight(float intensity){AmbientLight_intensity = intensity;};
-    void setBackground(SDL_Color color){backgroundColor = color;}
+    void setBackground(uint32_t color){backgroundColor = color;}
     //adder
     void addObjectPtr(std::unique_ptr<Object> ObjectPtr);//为Scene实例添加物体（unique_ptr）//unique_ptr, #include <memory>
     void addLightPtr(std::unique_ptr<Light> LightPtr);//为Scene实例添加光源
 private:
-    SDL_Color backgroundColor = {0, 0, 0, 255};
+    uint32_t backgroundColor = 0x000000FF;
     float AmbientLight_intensity = 0;//Ambient Light环境光强
     std::vector<std::unique_ptr<Object>> ObjectPtrs;
     std::vector<std::unique_ptr<Light>> LightPtrs;

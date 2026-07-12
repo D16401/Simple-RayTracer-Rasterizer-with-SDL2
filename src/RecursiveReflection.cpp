@@ -13,10 +13,10 @@ int main(int argc, char* argv[]){
     
     std::shared_ptr<Scene> scenePtr = std::make_shared<Scene>();
     scenePtr->setAmbientLight(0.2f);
-    scenePtr->setBackground({0, 0, 0, 255});
+    scenePtr->setBackground(0x000000FF);
 
     auto sphereAPtr = std::make_unique<Sphere>();//堆上创建
-    sphereAPtr->setColor({255, 0, 0, 255});
+    sphereAPtr->setColor(0xFF0000FF);
     sphereAPtr->setRadius(0.5f);
     sphereAPtr->setPosition(Vec3(-0.6f, 0, -2.0f));
     sphereAPtr->setSpecular(100);
@@ -24,7 +24,7 @@ int main(int argc, char* argv[]){
     scenePtr->addObjectPtr(std::move(sphereAPtr));//sphereAPtr现在是nullptr
 
     auto sphereBPtr = std::make_unique<Sphere>();//堆上创建
-    sphereBPtr->setColor({0, 0, 255, 255});
+    sphereBPtr->setColor(0x0000FFFF);
     sphereBPtr->setRadius(0.5f);
     sphereBPtr->setPosition(Vec3(0.6f, 0, -2.0f));
     sphereBPtr->setSpecular(100);
@@ -32,7 +32,7 @@ int main(int argc, char* argv[]){
     scenePtr->addObjectPtr(std::move(sphereBPtr));//sphereBPtr现在是nullptr
 
     auto planePtr = std::make_unique<Plane>();
-    planePtr->setColor({80, 140, 80, 255});
+    planePtr->setColor(0x88AA88FF);
     planePtr->setNormal(Vec3(0, 2, 0));
     planePtr->setPosition(Vec3(0, -1.3f, -2.0f));
     planePtr->setSpecular(1000);
@@ -48,9 +48,13 @@ int main(int argc, char* argv[]){
     PLightPtr->setPosition(L);
     scenePtr->addLightPtr(std::move(PLightPtr));
 
+
+    std::shared_ptr<RayTracingSampler> samplerPtr = std::make_shared<RayTracingSampler>(500, 500);
+    samplerPtr->loadCamera(cameraPtr);
+    samplerPtr->loadScene(scenePtr);
+
     SDL_Application app;
-    app.LoadCamera(cameraPtr);
-    app.LoadScene(scenePtr);
+    app.loadSampler(samplerPtr);
     app.Init(false);
     app.Run([&]()
         {

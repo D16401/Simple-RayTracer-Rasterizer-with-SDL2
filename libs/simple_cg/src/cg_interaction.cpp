@@ -1,7 +1,6 @@
 #include <vector>
 #include <memory>
 #include <iostream>
-#include <functional>
 
 #include <SDL2/SDL.h>
 
@@ -108,7 +107,7 @@ size_t FindClosestIntersection(const Scene& scene, const Ray& intersectRay, floa
 float DiffuseFactor(const Vec3& HitPointNormal, const Vec3& HitInDirection){
     float N_dot_L = HitPointNormal.dot(HitInDirection*-1.0f);
     if( N_dot_L > 0){
-        float Factor = N_dot_L / (HitPointNormal.length() *HitInDirection.length());
+        float Factor = N_dot_L / (1  * HitInDirection.length());//HitPointNormal.length() = 1
         return Factor;
     }else{
         return 0;
@@ -122,7 +121,7 @@ float SpecularFactor(int specular, const Vec3& HitPointNormal, const Vec3& HitIn
         Vec3 ReflectOutRay = HitPointNormal* 2 * N_dot_L + HitInDirection;
         float R_dot_V = ReflectOutRay.dot(ViewDirection); 
         if (R_dot_V > 0){
-            float Factor = static_cast<float>(pow((R_dot_V / (ReflectOutRay.length() * ViewDirection.length())), specular));
+            float Factor = static_cast<float>(pow(R_dot_V / ReflectOutRay.length(), specular));//(R_dot_V / (ReflectOutRay.length() * ViewDirection.length())) = R_dot_V / (ReflectOutRay.length() / 1
             return Factor;
         }else{
             return 0;
@@ -145,17 +144,17 @@ float ComputeLighting(const Ray& ray, const Scene& scene, const Vec3& HitPoint, 
     return total_intensity;
 }
 
-SDL_Color SimpleRayTracing(const Camera& camera, const Scene& scene, const Vec3& viewportP){
+uint32_t SimpleRayTracing(const Camera& camera, const Scene& scene, const Vec3& viewportP){
     Vec3 cameraPos = camera.getPosition();
     Ray ray(cameraPos, viewportP - cameraPos);
     size_t closest_objPtr_index = static_cast<size_t>(-1);
     float closest_distance = CGMATH_INF;
-    SDL_Color color;
+    uint32_t color;
     switch (camera.getCameraMode())
     {
         case CameraMode::VisibilityOnly:{
-            auto VisibilityOnly = [](SDL_Color local_color, const Ray&){return local_color;};
-            SDL_Color local_color = TraceRay(
+            auto VisibilityOnly = [](uint32_t local_color, const Ray&){return local_color;};
+            uint32_t local_color = TraceRay(
                 ray, scene, 1, closest_objPtr_index, closest_distance, 
                 VisibilityOnly
             );
@@ -164,7 +163,7 @@ SDL_Color SimpleRayTracing(const Camera& camera, const Scene& scene, const Vec3&
         }
         case CameraMode::DirectLighting:{
             auto DirectLighting =
-            [&scene, &closest_objPtr_index, &closest_distance](SDL_Color local_color, const Ray& currentRay){
+            [&scene, &closest_objPtr_index, &closest_distance](uint32_t local_color, const Ray& currentRay){
                 float total_intensity = 0;
                 if (closest_objPtr_index != static_cast<size_t>(-1)){
                     Vec3 Hitpoint = currentRay.getOrigin() + currentRay.getDirection() * closest_distance;
@@ -172,9 +171,9 @@ SDL_Color SimpleRayTracing(const Camera& camera, const Scene& scene, const Vec3&
                     int specular = scene.getObjectPtrs()[closest_objPtr_index]->getSpecular();
                     total_intensity = ComputeLighting(currentRay, scene, Hitpoint, HitpointNormal, specular, false);//enableOcclusionTest = false
                 }
-                return local_color * (scene.getAmbientLight() + total_intensity);
+                return colorScale(local_color, (scene.getAmbientLight() + total_intensity));
             };
-            SDL_Color local_color = TraceRay(
+            uint32_t local_color = TraceRay(
                 ray, scene, 1, closest_objPtr_index, closest_distance, 
                 DirectLighting
             );
@@ -183,7 +182,7 @@ SDL_Color SimpleRayTracing(const Camera& camera, const Scene& scene, const Vec3&
         }
         case CameraMode::HardShadows:{//almost same as DirectLighting
             auto HardShadows =                 
-            [&scene, &closest_objPtr_index, &closest_distance](SDL_Color local_color, const Ray& currentRay){
+            [&scene, &closest_objPtr_index, &closest_distance](uint32_t local_color, const Ray& currentRay){
                 float total_intensity = 0;
                 if (closest_objPtr_index != static_cast<size_t>(-1)){
                     Vec3 Hitpoint = currentRay.getOrigin() + currentRay.getDirection() * closest_distance;
@@ -191,9 +190,9 @@ SDL_Color SimpleRayTracing(const Camera& camera, const Scene& scene, const Vec3&
                     int specular = scene.getObjectPtrs()[closest_objPtr_index]->getSpecular();
                     total_intensity = ComputeLighting(currentRay, scene, Hitpoint, HitpointNormal, specular, true);//enableOcclusionTest = true
                 }
-                return local_color * (scene.getAmbientLight() + total_intensity);
+                return colorScale(local_color, (scene.getAmbientLight() + total_intensity));
             };
-            SDL_Color local_color = TraceRay(
+            uint32_t local_color = TraceRay(
                 ray, scene, 1, closest_objPtr_index, closest_distance, 
                 HardShadows
             );
@@ -202,7 +201,7 @@ SDL_Color SimpleRayTracing(const Camera& camera, const Scene& scene, const Vec3&
         }
         case CameraMode::RecursiveReflection:{
             auto RecursiveReflection =                 
-            [&scene, &closest_objPtr_index, &closest_distance](SDL_Color local_color, const Ray& currentRay){
+            [&scene, &closest_objPtr_index, &closest_distance](uint32_t local_color, const Ray& currentRay){
                 float total_intensity = 0;
                 if (closest_objPtr_index != static_cast<size_t>(-1)){
                     Vec3 Hitpoint = currentRay.getOrigin() + currentRay.getDirection() * closest_distance;
@@ -210,9 +209,9 @@ SDL_Color SimpleRayTracing(const Camera& camera, const Scene& scene, const Vec3&
                     int specular = scene.getObjectPtrs()[closest_objPtr_index]->getSpecular();
                     total_intensity = ComputeLighting(currentRay, scene, Hitpoint, HitpointNormal, specular, true);
                 }
-                return local_color * (scene.getAmbientLight() + total_intensity);
+                return colorScale(local_color, (scene.getAmbientLight() + total_intensity));
             };
-            SDL_Color local_color = TraceRay(
+            uint32_t local_color = TraceRay(
                 ray, scene, camera.getReflectionDepth(), closest_objPtr_index, closest_distance, 
                 RecursiveReflection
             );
@@ -221,32 +220,4 @@ SDL_Color SimpleRayTracing(const Camera& camera, const Scene& scene, const Vec3&
         }
     }
     return color;
-}
-
-SDL_Color TraceRay(const Ray& ray, const Scene& scene, int ReflectiveDepth, size_t& closest_objPtr_index, float& closest_distance, std::function<SDL_Color(SDL_Color, const Ray&)>Shading){
-    closest_objPtr_index = FindClosestIntersection(scene, ray, closest_distance);
-    SDL_Color local_color = scene.getBackgroundColor();
-    if (closest_objPtr_index == static_cast<size_t>(-1)){
-        SDL_Color color = local_color;
-        return color;
-    }else{
-        local_color = scene.getObjectPtrs()[closest_objPtr_index]->getColor();
-        SDL_Color color = Shading(local_color, ray);
-        ReflectiveDepth--;
-        if (ReflectiveDepth <= 0){
-            return color;
-        }else{
-            Vec3 HitPoint = ray.getOrigin() + ray.getDirection() * closest_distance;
-            Vec3 HitInDirection = ray.getDirection();
-            Vec3 Normal = scene.getObjectPtrs()[closest_objPtr_index]->getNormal(HitPoint).normalize();
-            Vec3 ReflectDirection = HitInDirection - Normal * HitInDirection.dot(Normal) * 2;
-            float reflectivity = scene.getObjectPtrs()[closest_objPtr_index]->getReflectivity();
-            Ray NewRay(HitPoint + ReflectDirection * CGMath_EPS * 40, ReflectDirection);
-            closest_objPtr_index = static_cast<size_t>(-1);
-            closest_distance = CGMATH_INF;
-            SDL_Color reflected_color = TraceRay(NewRay, scene, ReflectiveDepth, closest_objPtr_index, closest_distance, Shading);
-            color = blendByReflectivity(color, reflected_color, reflectivity);
-            return color;
-        }
-    }
 }

@@ -1,42 +1,46 @@
-#pragma once
-
-#include <SDL2/SDL.h>
-#include <memory>
+#include <iostream>
+#include <cstdint>
 #include <functional>
+#include <memory>
+#include <SDL2/SDL.h>
 
-#include "cg_structure.h"
 #include "cg_math.h"
+#include "cg_sampler.h"
 
 class SDL_Application{
 public:
-    SDL_Application(){}
+    SDL_Application() = default;
     SDL_Application(const char* title);
     SDL_Application(const SDL_Application&) = delete;
     SDL_Application& operator=(const SDL_Application&) = delete;
-    ~SDL_Application();
-    void LoadCamera(std::shared_ptr<const Camera> camera);
-    void LoadScene(std::shared_ptr<const Scene> scene);
+    ~SDL_Application(); 
+    int loadSampler(std::shared_ptr<Sampler> sampler_ptr);
     int Init(bool enableTestWindow = false);//根据载入的相机设置，初始化窗口和渲染器
-    int Run(std::function<void()> UpdateBlock = [](){});//启动主程序，通过载入的相机渲染载入的场景
+    int Run(std::function<void()> UpdateBlock = [](){});    
     int HandleEvent();//处理事件，窗口关闭和esc按下事件
-    int RenderScene();
-    void PaintPixel(Vec2& canvasP, SDL_Color color);
+    int RenderFrame();
     int getTickCount(){return tickCount;}
 private:
     const char* title = "Title";
-    int canvasW = 200;
-    int canvasH = 200;
-    bool isCameraLoaded = false;
-    bool isSceneLoaded = false;
+    int canvasW = 500;
+    int canvasH = 500;
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
-    std::shared_ptr<const Camera> cameraPtr;
-    std::shared_ptr<const Scene> scenePtr;
+    SDL_Texture* frameTexture = nullptr;
+    std::shared_ptr<Sampler> samplerPtr;
     int tickCount = 0;
     int fps = 30;
+    int runtimes = 0;
 };
 
-SDL_Color operator*(float scalar, SDL_Color color);
-SDL_Color operator*(SDL_Color color, float scalar);
-SDL_Color blendByReflectivity(SDL_Color color1, SDL_Color color2, float reflectivity);
+/*
+inline SDL_Color ConvertToSDL_Color(uint32_t packed) {
+    SDL_Color c;
+    c.r = (packed >> 24) & 0xFF;  // RR
+    c.g = (packed >> 16) & 0xFF;  // GG
+    c.b = (packed >> 8)  & 0xFF;  // BB
+    c.a =  packed        & 0xFF;  // AA
+    return c;
+}
+*/
 
