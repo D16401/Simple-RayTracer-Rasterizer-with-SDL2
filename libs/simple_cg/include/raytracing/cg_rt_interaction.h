@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cg_structure.h"
+#include "cg_rt_structure.h"
 
 Vec3 CanvasToViewport(const Camera& camera, const Vec2& canvasP);//坐标转换，画布到视口
 
@@ -9,7 +9,7 @@ float DiffuseFactor(const Vec3& HitPointNormal, const Vec3& HitInDirection);
 float SpecularFactor(int specular, const Vec3& HitPointNormal, const Vec3& HitInDirection, const Vec3& ViewDirection);
 float ComputeLighting(const Ray& ray, const Scene& scene, const Vec3& HitPoint,
                       const Vec3& HitPointNormal, int SurfaceSpecular, bool enableOcclusionTest);
-uint32_t SimpleRayTracing(const Camera& camera, const Scene& scene, const Vec3& viewportP);
+
 template<typename ShadingFunc>
 uint32_t TraceRay(const Ray& ray, const Scene& scene, int ReflectiveDepth,
                   size_t& closest_objPtr_index, float& closest_distance,
@@ -38,10 +38,36 @@ uint32_t TraceRay(const Ray& ray, const Scene& scene, int ReflectiveDepth,
     }else{
         return local_color;//无物体命中，返回背景色
     }
-}
+};
 
-template<typename ShadingFunc>
-uint32_t Shading();
+template <CameraMode Mode>
+struct CameraModeTraits;
+template <>
+struct CameraModeTraits<CameraMode::DirectLighting>{
+    static constexpr bool enableOcclusionTrait = false;
+    static int getReflectionDepth(const Camera& camera){
+        return 1;
+    }
+};
+template <>
+struct CameraModeTraits<CameraMode::HardShadows>{
+    static constexpr bool enableOcclusionTrait = true;
+    static int getReflectionDepth(const Camera& camera){
+        return 1;
+    }
+};
+template <>
+struct CameraModeTraits<CameraMode::RecursiveReflection>{
+    static constexpr bool enableOcclusionTrait = true;
+    static int getReflectionDepth(const Camera& camera){
+        return camera.getReflectionDepth();
+    }
+};
+template <CameraMode Mode>
+uint32_t SimpleRayTracingTemplate(const Camera& camera, const Scene& scene, const Vec3& viewportP);
+
+uint32_t SimpleRayTracing(const Camera& camera, const Scene& scene, const Vec3& viewportP);
+
 
 
 inline std::uint32_t blendByReflectivity(std::uint32_t c1, std::uint32_t c2, float reflectivity){
@@ -61,7 +87,7 @@ inline std::uint32_t blendByReflectivity(std::uint32_t c1, std::uint32_t c2, flo
         ((c1 >> 0)  & 0xFF) * ir +
         ((c2 >> 0)  & 0xFF) * reflectivity + 0.5f);
     return (r << 24) | (g << 16) | (b << 8) | (a << 0);
-}
+};
 inline std::uint32_t colorScale(std::uint32_t color, float weight)
 {
     weight = std::clamp(weight, 0.0f, 1.0f);
@@ -76,4 +102,4 @@ inline std::uint32_t colorScale(std::uint32_t color, float weight)
         ((color >> 0)  & 0xFF) * weight + 0.5f);
 
     return (r << 24) | (g << 16) | (b << 8) | a;
-}
+};

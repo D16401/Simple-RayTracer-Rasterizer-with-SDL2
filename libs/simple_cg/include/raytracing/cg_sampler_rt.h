@@ -2,7 +2,7 @@
 #include "cg_sampler.h"
 
 #include <memory>
-#include "cg_structure.h"
+#include "cg_rt_structure.h"
 
 
 class RayTracingSampler: public Sampler{

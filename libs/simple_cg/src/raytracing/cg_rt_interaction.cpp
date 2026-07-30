@@ -1,20 +1,18 @@
+#include "cg_rt_interaction.h"
+
 #include <vector>
 #include <memory>
 #include <iostream>
-
-#include <SDL2/SDL.h>
+#include <stdexcept>
 
 #include "cg_math.h"
-#include "cg_SDLwraper.h"
-
-#include "cg_interaction.h"
 
 Vec3 CanvasToViewport(const Camera& camera, const Vec2& canvasP){
     float v_w = ((canvasP.getX() + 0.5f) / camera.getCanvasW() - 0.5f) * camera.getViewportW();
     float v_h = -((canvasP.getY() + 0.5f) / camera.getCanvasH() - 0.5f) * camera.getViewportH();
     Vec3 ralativeBias = (camera.getForward() * camera.getDepth()) + (camera.getUp() * v_h) + (camera.getRight() *  v_w);
     return camera.getPosition() + ralativeBias;
-}
+};
 
 bool Sphere::intersectTest(const Ray& ray, float& return_distance) const {
     const Vec3& D = ray.getDirection();
@@ -39,7 +37,7 @@ bool Sphere::intersectTest(const Ray& ray, float& return_distance) const {
     }else{
         return false;
     }
-}
+};
 bool Plane::intersectTest(const Ray& ray, float& return_distance)const {
     const Vec3& D = ray.getDirection();
     const Vec3& N = normal;
@@ -58,7 +56,7 @@ bool Plane::intersectTest(const Ray& ray, float& return_distance)const {
         }
 
     }   
-}
+};
 
 bool PointLight::OcclusionTest(const Scene& scene, const Vec3& HitPoint) const {
     Vec3 L = this->getHitInDirection(HitPoint)*-1.0f;
@@ -75,7 +73,7 @@ bool PointLight::OcclusionTest(const Scene& scene, const Vec3& HitPoint) const {
             return true;
         }
     }
-}
+};
 bool DirectionalLight::OcclusionTest(const Scene& scene, const Vec3& HitPoint) const {
     Vec3 L = this->getHitInDirection(HitPoint)*-1.0f;
     Vec3 O = HitPoint + L * CGMath_EPS * 40;
@@ -87,7 +85,7 @@ bool DirectionalLight::OcclusionTest(const Scene& scene, const Vec3& HitPoint) c
     }else{
         return true;
     }
-}
+};
 
 size_t FindClosestIntersection(const Scene& scene, const Ray& intersectRay, float& closest_distance){
     size_t closest_objPtr_index = static_cast<size_t>(-1);//哨兵值
@@ -102,7 +100,7 @@ size_t FindClosestIntersection(const Scene& scene, const Ray& intersectRay, floa
         }
     }
     return closest_objPtr_index;
-}
+};
 
 float DiffuseFactor(const Vec3& HitPointNormal, const Vec3& HitInDirection){
     float N_dot_L = HitPointNormal.dot(HitInDirection*-1.0f);
@@ -112,7 +110,7 @@ float DiffuseFactor(const Vec3& HitPointNormal, const Vec3& HitInDirection){
     }else{
         return 0;
     }
-}
+};
 float SpecularFactor(int specular, const Vec3& HitPointNormal, const Vec3& HitInDirection, const Vec3& ViewDirection){
     if (specular <= 0){
         return 0;
@@ -127,7 +125,7 @@ float SpecularFactor(int specular, const Vec3& HitPointNormal, const Vec3& HitIn
             return 0;
         }
     }
-}
+};
 float ComputeLighting(const Ray& ray, const Scene& scene, const Vec3& HitPoint, const Vec3& HitPointNormal, int SurfaceSpecular, bool enableOcclusionTest){
     bool OcclusionTest = enableOcclusionTest;
     float total_intensity = 0;
@@ -142,82 +140,58 @@ float ComputeLighting(const Ray& ray, const Scene& scene, const Vec3& HitPoint, 
         total_intensity = total_intensity + scene.getLightPtrs()[idx]->getIntensity() * IntensityFactor;
     }
     return total_intensity;
-}
-
-uint32_t SimpleRayTracing(const Camera& camera, const Scene& scene, const Vec3& viewportP){
+};
+template <CameraMode Mode>
+uint32_t SimpleRayTracingTemplate(const Camera& camera, const Scene& scene, const Vec3& viewportP){
     Vec3 cameraPos = camera.getPosition();
     Ray ray(cameraPos, viewportP - cameraPos);
     size_t closest_objPtr_index = static_cast<size_t>(-1);
     float closest_distance = CGMATH_INF;
-    uint32_t color;
-    switch (camera.getCameraMode())
-    {
-        case CameraMode::VisibilityOnly:{
-            auto VisibilityOnly = [](uint32_t local_color, const Ray&){return local_color;};
-            uint32_t local_color = TraceRay(
-                ray, scene, 1, closest_objPtr_index, closest_distance, 
-                VisibilityOnly
-            );
-            color = local_color;
-            break;
+    constexpr bool enableOcclusion = CameraModeTraits<Mode>::enableOcclusionTrait;
+    int reflectionDepth = CameraModeTraits<Mode>::getReflectionDepth(camera);
+    auto shadingFunc = [&scene, &closest_objPtr_index, &closest_distance, enableOcclusion]
+    (uint32_t local_color, const Ray& currentRay){
+        float total_intensity = 0;
+        if (closest_objPtr_index != static_cast<size_t>(-1)){
+            Vec3 Hitpoint = currentRay.getOrigin() + currentRay.getDirection() * closest_distance;
+            Vec3 HitpointNormal = scene.getObjectPtrs()[closest_objPtr_index]->getNormal(Hitpoint).normalize();
+            int specular = scene.getObjectPtrs()[closest_objPtr_index]->getSpecular();
+            total_intensity = ComputeLighting(currentRay, scene, Hitpoint, HitpointNormal, specular, enableOcclusion);
         }
-        case CameraMode::DirectLighting:{
-            auto DirectLighting =
-            [&scene, &closest_objPtr_index, &closest_distance](uint32_t local_color, const Ray& currentRay){
-                float total_intensity = 0;
-                if (closest_objPtr_index != static_cast<size_t>(-1)){
-                    Vec3 Hitpoint = currentRay.getOrigin() + currentRay.getDirection() * closest_distance;
-                    Vec3 HitpointNormal = scene.getObjectPtrs()[closest_objPtr_index]->getNormal(Hitpoint).normalize();
-                    int specular = scene.getObjectPtrs()[closest_objPtr_index]->getSpecular();
-                    total_intensity = ComputeLighting(currentRay, scene, Hitpoint, HitpointNormal, specular, false);//enableOcclusionTest = false
-                }
-                return colorScale(local_color, (scene.getAmbientLight() + total_intensity));
-            };
-            uint32_t local_color = TraceRay(
-                ray, scene, 1, closest_objPtr_index, closest_distance, 
-                DirectLighting
-            );
-            color = local_color;
-            break;
-        }
-        case CameraMode::HardShadows:{//almost same as DirectLighting
-            auto HardShadows =                 
-            [&scene, &closest_objPtr_index, &closest_distance](uint32_t local_color, const Ray& currentRay){
-                float total_intensity = 0;
-                if (closest_objPtr_index != static_cast<size_t>(-1)){
-                    Vec3 Hitpoint = currentRay.getOrigin() + currentRay.getDirection() * closest_distance;
-                    Vec3 HitpointNormal = scene.getObjectPtrs()[closest_objPtr_index]->getNormal(Hitpoint).normalize();
-                    int specular = scene.getObjectPtrs()[closest_objPtr_index]->getSpecular();
-                    total_intensity = ComputeLighting(currentRay, scene, Hitpoint, HitpointNormal, specular, true);//enableOcclusionTest = true
-                }
-                return colorScale(local_color, (scene.getAmbientLight() + total_intensity));
-            };
-            uint32_t local_color = TraceRay(
-                ray, scene, 1, closest_objPtr_index, closest_distance, 
-                HardShadows
-            );
-            color = local_color;
-            break;
-        }
-        case CameraMode::RecursiveReflection:{
-            auto RecursiveReflection =                 
-            [&scene, &closest_objPtr_index, &closest_distance](uint32_t local_color, const Ray& currentRay){
-                float total_intensity = 0;
-                if (closest_objPtr_index != static_cast<size_t>(-1)){
-                    Vec3 Hitpoint = currentRay.getOrigin() + currentRay.getDirection() * closest_distance;
-                    Vec3 HitpointNormal = scene.getObjectPtrs()[closest_objPtr_index]->getNormal(Hitpoint).normalize();
-                    int specular = scene.getObjectPtrs()[closest_objPtr_index]->getSpecular();
-                    total_intensity = ComputeLighting(currentRay, scene, Hitpoint, HitpointNormal, specular, true);
-                }
-                return colorScale(local_color, (scene.getAmbientLight() + total_intensity));
-            };
-            uint32_t local_color = TraceRay(
-                ray, scene, camera.getReflectionDepth(), closest_objPtr_index, closest_distance, 
-                RecursiveReflection
-            );
-            color = local_color;
-            break;
-        }
+        return colorScale(local_color, (scene.getAmbientLight() + total_intensity));
+    };
+    uint32_t local_color = TraceRay(ray, scene, reflectionDepth, closest_objPtr_index, closest_distance, shadingFunc);
+    return local_color;
+};
+template <>
+inline uint32_t SimpleRayTracingTemplate<CameraMode::VisibilityOnly>
+(const Camera& camera, const Scene& scene, const Vec3& viewportP){
+    Vec3 cameraPos = camera.getPosition();
+    Ray ray(cameraPos, viewportP - cameraPos);
+    size_t closest_objPtr_index = static_cast<size_t>(-1);
+    float closest_distance = CGMATH_INF;
+    auto VisibilityOnly = [](uint32_t local_color, const Ray&) {
+        return local_color;
+    };
+    return TraceRay(ray, scene, 1, closest_objPtr_index, closest_distance, VisibilityOnly);
+};
+
+
+uint32_t SimpleRayTracing(const Camera& camera, const Scene& scene, const Vec3& viewportP) {
+    switch (camera.getCameraMode()) {
+        case CameraMode::VisibilityOnly:
+            return SimpleRayTracingTemplate<CameraMode::VisibilityOnly>(camera, scene, viewportP);
+        case CameraMode::DirectLighting:
+            return SimpleRayTracingTemplate<CameraMode::DirectLighting>(camera, scene, viewportP);
+        case CameraMode::HardShadows:
+            return SimpleRayTracingTemplate<CameraMode::HardShadows>(camera, scene, viewportP);
+        case CameraMode::RecursiveReflection:
+            return SimpleRayTracingTemplate<CameraMode::RecursiveReflection>(camera, scene, viewportP);
+        default:
+            throw std::runtime_error("Unhandled CameraMode!");
+            return scene.getBackgroundColor();
     }
-    return color;
-}
+};
+template uint32_t SimpleRayTracingTemplate<CameraMode::DirectLighting>(const Camera& camera, const Scene& scene, const Vec3& viewportP);
+template uint32_t SimpleRayTracingTemplate<CameraMode::HardShadows>(const Camera& camera, const Scene& scene, const Vec3& viewportP);
+template uint32_t SimpleRayTracingTemplate<CameraMode::RecursiveReflection>(const Camera& camera, const Scene& scene, const Vec3& viewportP);

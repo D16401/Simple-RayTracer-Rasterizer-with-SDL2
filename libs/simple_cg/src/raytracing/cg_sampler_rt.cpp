@@ -1,7 +1,7 @@
-#include "cg_sampler_raytracing.h"
+#include "cg_sampler_rt.h"
 
 #include "cg_sampler.h"
-#include "cg_interaction.h"
+#include "cg_rt_interaction.h"
 
 void RayTracingSampler::UpdateBuffer(uint32_t* dst, int pitch){//传入texture的内存位置
     for (int j = 0; j < height; j++){

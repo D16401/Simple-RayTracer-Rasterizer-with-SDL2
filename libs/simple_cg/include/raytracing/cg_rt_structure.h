@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <vector>
 #include <algorithm>
-#include <SDL2/SDL.h>
 #include <memory>
 
 #include "cg_math.h"
@@ -48,7 +47,7 @@ public:
     Vec3 getPosition() const {return position;}
     CameraMode getCameraMode() const {return cameraMode;}
     //setter
-    void setRatio(int W, int H){ratio = static_cast<float>(W/H);}
+    void setRatio(int W, int H){ratio = static_cast<float>(W)/H;}
     void setCanvasW(int W){canvasW = W; canvasH = static_cast<int>(W / ratio) + 1;}
     void setCanvasH(int H){canvasH = H; canvasW = static_cast<int>(H * ratio) + 1;}
     void setReflectionDepth(int depth){reflectionDepth = depth;}

@@ -17,7 +17,7 @@ int main(int argc, char* argv[]){
     sphereAPtr->setPosition(Vec3(0, 0, -2));
     scenePtr->addObjectPtr(std::move(sphereAPtr));//sphereAPtr现在是nullptr
 
-    std::shared_ptr<RayTracingSampler> samplerPtr = std::make_shared<RayTracingSampler>(1000, 1000);
+    std::shared_ptr<RayTracingSampler> samplerPtr = std::make_shared<RayTracingSampler>(500, 500);
     samplerPtr->loadCamera(cameraPtr);
     samplerPtr->loadScene(scenePtr);
 

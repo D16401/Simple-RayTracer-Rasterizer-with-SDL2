@@ -1,4 +1,4 @@
-#include "cg_structure.h"
+#include "cg_rt_structure.h"
 
 //Scene
 void Scene::addObjectPtr(std::unique_ptr<Object> ObjectPtr){

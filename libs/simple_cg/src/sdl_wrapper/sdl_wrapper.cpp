@@ -1,4 +1,4 @@
-#include "cg_SDLwraper.h"
+#include "sdl_wrapper.h"
 
 #include <iostream>
 #include <cstdint>
@@ -6,6 +6,7 @@
 #include <memory>
 #include <cstring>
 #include <SDL2/SDL.h>
+
 #include "cg_math.h"
 
 SDL_Application::SDL_Application(const char* Title){
