@@ -20,15 +20,15 @@ target_link_libraries(sdl_wrapper PRIVATE SDL2 SDL2main)
 target_include_directories(sdl_wrapper PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/sdl_wrapper")
 
 set(rtSrc 
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/raytracing/cg_rt_interaction.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/raytracing/cg_rt_structure.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/raytracing/cg_sampler_rt.cpp")
-add_library(raytracing STATIC ${rtSrc})
-target_link_libraries(raytracing PRIVATE cg_math)
-target_link_libraries(raytracing PRIVATE cg_sampler)
-target_link_libraries(raytracing PRIVATE sdl_wrapper)
-target_include_directories(raytracing PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/raytracing")
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/cg_raytracer/cg_rt_interaction.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/cg_raytracer/cg_rt_structure.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/cg_raytracer/cg_sampler_rt.cpp")
+add_library(cg_raytracer STATIC ${rtSrc})
+target_link_libraries(cg_raytracer PRIVATE cg_math)
+target_link_libraries(cg_raytracer PRIVATE cg_sampler)
+target_link_libraries(cg_raytracer PRIVATE sdl_wrapper)
+target_include_directories(cg_raytracer PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/cg_raytracer")
 
 add_library(simple_cg INTERFACE)#接口库，集合
-target_link_libraries(simple_cg INTERFACE cg_math cg_sampler raytracing sdl_wrapper)
+target_link_libraries(simple_cg INTERFACE cg_math cg_sampler cg_raytracer sdl_wrapper)
 target_include_directories(simple_cg INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
