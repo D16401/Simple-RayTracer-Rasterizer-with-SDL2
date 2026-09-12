@@ -1,0 +1,11 @@
+{
+    "position":[0,0,0],
+    "forward":[0,0,-1],
+    "right":[1,0,0],
+    "up":[0,1,0],
+    "depth":1,
+    "viewportW":1,
+    "viewportH":1,
+    "canvasW":500,
+    "canvasH":500
+}

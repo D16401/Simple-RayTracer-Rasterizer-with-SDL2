@@ -18,10 +18,16 @@ CMakeUserPresets.json
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #cmake-build-*
 
+# SDL2 预编译产物（运行时 DLL / 导入库 / 符号）
+external/SDL2/lib/*.dll
+external/SDL2/lib/*.lib
+external/SDL2/lib/*.pdb
+
 # Build directory
 build/
+build-check/
 
-#SDL lib
-libs/SDL2/lib/
-
+#local dev env
 .vscode/
+/bin/
+/debug/

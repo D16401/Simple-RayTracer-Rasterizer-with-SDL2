@@ -1,0 +1,6 @@
+{
+    "SDLapp":link"../presetSDLapp/movableCamera.json",
+    "sampler":link"../presetSampler/raytracer1.json",
+    "scene":link"../presetScene/Basic.json",
+    "camera":link"../presetCamera/stdCamera.json"
+}

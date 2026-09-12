@@ -1,9 +1,12 @@
+#include "cg_math.h"
+
 #include <cmath>
+#include <iostream>
 #include <utility>
 #include <random>
 
-#include "cg_math.h"
-
+using cg::Vec3;
+using cg::Vec2;
 
 Vec3 Vec3::operator+(const Vec3& other) const{
     return Vec3(x+other.x, y+other.y, z+other.z);
@@ -28,9 +31,15 @@ float Vec3::length() const{
 }
 Vec3 Vec3::normalize() const{
     float len = length();
+    if (len < CGMath_EPS){
+        std::cerr << "devided by zero when normalize" << std::endl;
+        len = CGMath_EPS;
+    }
     return Vec3(x/len, y/len, z/len);
 }
-
+void Vec3::print()const{
+    std::cout << "(" << x << "," << y << "," << z << ")" << std::endl;
+}
 
 Vec2 Vec2::operator+(const Vec2& other) const{
     return Vec2(x + other.x, y+other.y);
@@ -58,7 +67,7 @@ Vec2 Vec2::normalize() const{// 归一化
     return Vec2(x/len, y/len);
 }
 
-int solveQuadratic(float a, float b, float c, float& x1, float& x2){
+int cg::solveQuadratic(float a, float b, float c, float& x1, float& x2){
     //求解二次方程，返回值为根的个数：0无实根，1有重根，2有两不同实根
     if (abs(a) < CGMath_EPS){
         if (abs(b) < CGMath_EPS){
@@ -92,7 +101,13 @@ int solveQuadratic(float a, float b, float c, float& x1, float& x2){
     }
 }
 
-int randint(int l, int r) {
+Vec3 cg::rotateAroundAxis(Vec3 v, Vec3 axis, float angle){
+    Vec3 n = axis.normalize();
+    return v*cos(angle) + n.cross(v)*sin(angle) + n*(n.dot(v))*(1-cos(angle));
+}
+
+
+int cg::randint(int l, int r) {
     static std::mt19937 g{std::random_device{}()};
     return std::uniform_int_distribution<>(l, r)(g);
 }

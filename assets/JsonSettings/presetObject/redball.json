@@ -1,0 +1,8 @@
+{
+    "type":"sphere",
+    "name":"redball",
+    "position":[0,0,-2],
+    "material":link"./presetMaterial/stdRed.json",
+    "rtAttr":link"./presetRtAttr/stdRough.json",
+    "rzAttr":link"./presetRzAttr/stdMesh.json"
+}

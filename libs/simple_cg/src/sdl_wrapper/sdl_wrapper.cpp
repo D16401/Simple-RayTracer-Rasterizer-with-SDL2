@@ -9,6 +9,8 @@
 
 #include "cg_math.h"
 
+namespace cg{
+
 SDL_Application::SDL_Application(const char* Title){
     title = Title;
 }
@@ -17,7 +19,7 @@ SDL_Application::~SDL_Application() {
     if (window)   { SDL_DestroyWindow(window); }
     SDL_Quit();
 }
-int SDL_Application::loadSampler(std::shared_ptr<Sampler> sampler_ptr){
+int SDL_Application::loadSampler(std::shared_ptr<cg::Sampler> sampler_ptr){
     samplerPtr = sampler_ptr;
     if (!samplerPtr){
         std::cerr << "Fail to load the sampler or a nullptr error." << std::endl;
@@ -37,7 +39,7 @@ int SDL_Application::Init(bool enableTestWindow){
     }
     //Init window
     window = SDL_CreateWindow(
-        title,
+        title.c_str(),
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
         canvasW,
@@ -66,7 +68,7 @@ int SDL_Application::Init(bool enableTestWindow){
         std::cout << "SDL initialization test mode. Press ESC to continue main program..." << std::endl;
     }
     while(testWindow){
-        SDL_SetRenderDrawColor(renderer, randint(1, 255), randint(1, 255), randint(1, 255), 255);//设置颜色
+        SDL_SetRenderDrawColor(renderer, cg::randint(1, 255), cg::randint(1, 255), cg::randint(1, 255), 255);//设置颜色
         SDL_RenderClear(renderer);//绘制颜色
         SDL_RenderPresent(renderer);//显示（黑色）屏幕
         if(HandleEvent() == 1){
@@ -94,6 +96,26 @@ int SDL_Application::Init(bool enableTestWindow){
     //end init
     return 0;
 }
+bool SDL_Application::isKeyDown(SDL_Scancode sc) const{
+    const Uint8* state = SDL_GetKeyboardState(nullptr);//轮询键盘状态，返回以scancode为下标的数组
+    return state != nullptr && state[sc] != 0;
+}
+Vec2 SDL_Application::getMousedelta() const{
+    return mouseDelta;//返回HandleEvent每帧采样的值
+}
+void SDL_Application::setEnableCameraMotion(bool isEnable){
+    enableCameraMotion = isEnable;
+    if (SDL_SetRelativeMouseMode(enableCameraMotion ? SDL_TRUE : SDL_FALSE) < 0){
+        std::cerr << "Fail to set CameraMotion: " << SDL_GetError() << std::endl;
+    }
+}
+void SDL_Application::setMouseCapture(bool capture){
+    mouseCaptured = capture;
+    if (SDL_SetRelativeMouseMode(capture ? SDL_TRUE : SDL_FALSE) < 0){
+        std::cerr << "Fail to set relative mouse mode: " << SDL_GetError() << std::endl;
+    }
+}
+
 int SDL_Application::HandleEvent(){
     SDL_Event event;
     while (SDL_PollEvent(&event))
@@ -101,6 +123,11 @@ int SDL_Application::HandleEvent(){
         if(event.type == SDL_QUIT){
             return 1;
         }else if(event.type == SDL_KEYDOWN){
+            if (enableCameraMotion && !event.key.repeat &&
+                (event.key.keysym.scancode == SDL_SCANCODE_LSHIFT ||
+                 event.key.keysym.scancode == SDL_SCANCODE_RSHIFT)){
+                setMouseCapture(!mouseCaptured);//切换鼠标捕捉/释放状态
+            }
             switch (event.key.keysym.sym)
             {
                 case SDLK_ESCAPE:
@@ -108,6 +135,9 @@ int SDL_Application::HandleEvent(){
             }
         }
     }
+    int dx = 0, dy = 0;
+    SDL_GetRelativeMouseState(&dx, &dy);
+    mouseDelta = Vec2(static_cast<float>(dx), static_cast<float>(dy));
     return 0;
 }
 int SDL_Application::RenderFrame(){
@@ -117,7 +147,8 @@ int SDL_Application::RenderFrame(){
     SDL_LockTexture(frameTexture, nullptr, &pixels, &pitch);
 
     uint32_t* dst = static_cast<uint32_t*>(pixels);
-    samplerPtr->UpdateBuffer(dst, pitch / sizeof(uint32_t));
+    samplerPtr->setTextureMemory(dst, pitch);
+    samplerPtr->UpdateBuffer();
 
     SDL_UnlockTexture(frameTexture);
     SDL_RenderClear(renderer);
@@ -126,7 +157,7 @@ int SDL_Application::RenderFrame(){
     return 0;
 }
 int SDL_Application::Run(std::function<void()> UpdateBlock){
-    //check 
+    //check sampler&texture buffer
     if (!samplerPtr){
         std::cerr << "No sampler has been loaded!" << std::endl;
         return -1;
@@ -139,7 +170,7 @@ int SDL_Application::Run(std::function<void()> UpdateBlock){
     //prepare for tick count
     bool isrunning = true;
     Uint64 lastTime = SDL_GetTicks64();
-    const Uint64 frameDelay = 1000 / fps;
+    const Uint64 frameDelay = 1000 / fps;//1000ms除以fps
     double lag = 0.0;
     //固定30hz的updateblock，渲染越快越好
     while (isrunning)
@@ -154,8 +185,12 @@ int SDL_Application::Run(std::function<void()> UpdateBlock){
             std::cout << "Terminated by the user." << std::endl;
             break;
         }
+
         while (lag >= frameDelay){
             tickCount++;
+            if (enableCameraMotion){
+                UpdateCameraMotion(static_cast<float>(elapsed) / 1000.0f);
+            }
             UpdateBlock();
             lag -= frameDelay;
         }
@@ -173,4 +208,25 @@ int SDL_Application::Run(std::function<void()> UpdateBlock){
     return 0;
 }
 
-
+void SDL_Application::UpdateCameraMotion(float deltaSeconds){
+    auto cameraPtr = samplerPtr.get()->getCameraPtr();
+    if (!cameraPtr){//未绑定相机则跳过
+        return;
+    }
+    const float speed = 0.5f * deltaSeconds;//平移速度：5单位/秒，乘deltaTime保证帧率无关
+    if (isKeyDown(SDL_SCANCODE_W))     { cameraPtr->moveForward(speed); }//前
+    if (isKeyDown(SDL_SCANCODE_S))     { cameraPtr->moveForward(-speed); }//后
+    if (isKeyDown(SDL_SCANCODE_A))     { cameraPtr->moveRight(-speed); }//左
+    if (isKeyDown(SDL_SCANCODE_D))     { cameraPtr->moveRight(speed); }//右
+    if (isKeyDown(SDL_SCANCODE_SPACE)) { cameraPtr->moveUp(speed); }//上（空格）
+    if (isKeyDown(SDL_SCANCODE_LCTRL) || isKeyDown(SDL_SCANCODE_RCTRL)) { cameraPtr->moveUp(-speed); }//下（Ctrl）
+    //视角旋转：仅在鼠标捕捉（相对鼠标模式）下生效
+    if (mouseCaptured){
+        Vec2 m = getMousedelta();
+        //符号按你Camera的约定：rotateYaw正=右转、rotatePitch正=抬头
+        cameraPtr->rotateYaw(-m.getX() * 0.003f);   //鼠标右移(dx>0)→右转头
+        cameraPtr->rotatePitch(-m.getY() * 0.003f);//鼠标上移(dy<0)→抬头
+    }
+}
+    
+}

@@ -1,0 +1,9 @@
+{
+    "type":"RayTracer",
+    "width":500,
+    "height":500,
+    "samplingmode":"VisibilityOnly",
+    "reflectionDepth":1,
+    "camera":link"../presetCamera/stdCamera.json",
+    "scene":link"../presetScene/Basic.json"
+}

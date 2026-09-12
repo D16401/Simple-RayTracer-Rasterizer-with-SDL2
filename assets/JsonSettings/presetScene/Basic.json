@@ -1,0 +1,6 @@
+{
+    "background":"#000000FF",
+    "ambient":0.2,
+    "objects":[link"../presetObject/redball.json"],
+    "lights":[]
+}

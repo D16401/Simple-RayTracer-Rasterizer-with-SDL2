@@ -1,0 +1,8 @@
+{
+    "title":"Title",
+    "canvasW":500,
+    "canvasH":500,
+    "fps":30,
+    "enableCameraMotion":true,
+    "mouseCaptured":true
+}

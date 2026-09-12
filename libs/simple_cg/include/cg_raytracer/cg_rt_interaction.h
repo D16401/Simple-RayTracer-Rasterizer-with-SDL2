@@ -1,8 +1,19 @@
 #pragma once
 
-#include "cg_rt_structure.h"
+#include "cg_sampler_rt.h"
+#include "cg_world.h"
+
+namespace cg{
 
 Vec3 CanvasToViewport(const Camera& camera, const Vec2& canvasP);//坐标转换，画布到视口
+
+bool IntersectTest(const Object& obj, const Ray& ray, float& return_distance);
+bool IntersectTest(const Sphere& sphere, const Ray& ray, float& return_distance);
+bool IntersectTest(const Plane& plane, const Ray& ray, float& return_distance);
+
+bool OcclusionTest(const Light& light, const Scene& scene, const Vec3& HitPoint);
+bool OcclusionTest(const PointLight& light, const Scene& scene, const Vec3& HitPoint);
+bool OcclusionTest(const DirectionalLight& light, const Scene& scene, const Vec3& HitPoint);
 
 size_t FindClosestIntersection(const Scene& scene, const Ray& intersectRay, float& closest_distance);
 float DiffuseFactor(const Vec3& HitPointNormal, const Vec3& HitInDirection);
@@ -27,7 +38,7 @@ uint32_t TraceRay(const Ray& ray, const Scene& scene, int ReflectiveDepth,
             Vec3 HitInDirection = ray.getDirection();
             Vec3 Normal = scene.getObjectPtrs()[closest_objPtr_index]->getNormal(HitPoint).normalize();
             Vec3 ReflectDirection = HitInDirection - Normal * HitInDirection.dot(Normal) * 2;
-            float reflectivity = scene.getObjectPtrs()[closest_objPtr_index]->getReflectivity();
+            float reflectivity = scene.getObjectPtrs()[closest_objPtr_index]->getRtAttr().reflectivity;
             Ray NewRay(HitPoint + ReflectDirection * CGMath_EPS * 40, ReflectDirection);
             closest_objPtr_index = static_cast<size_t>(-1);
             closest_distance = CGMATH_INF;
@@ -40,66 +51,32 @@ uint32_t TraceRay(const Ray& ray, const Scene& scene, int ReflectiveDepth,
     }
 };
 
-template <CameraMode Mode>
-struct CameraModeTraits;
+template <SamplingMode Mode>
+struct SamplingModeTraits;
 template <>
-struct CameraModeTraits<CameraMode::DirectLighting>{
+struct SamplingModeTraits<SamplingMode::DirectLighting>{
     static constexpr bool enableOcclusionTrait = false;
-    static int getReflectionDepth(const Camera& camera){
+    static int getReflectionDepth(const RayTracingSampler& RTsampler){
         return 1;
     }
 };
 template <>
-struct CameraModeTraits<CameraMode::HardShadows>{
+struct SamplingModeTraits<SamplingMode::HardShadows>{
     static constexpr bool enableOcclusionTrait = true;
-    static int getReflectionDepth(const Camera& camera){
+    static int getReflectionDepth(const RayTracingSampler& RTsampler){
         return 1;
     }
 };
 template <>
-struct CameraModeTraits<CameraMode::RecursiveReflection>{
+struct SamplingModeTraits<SamplingMode::RecursiveReflection>{
     static constexpr bool enableOcclusionTrait = true;
-    static int getReflectionDepth(const Camera& camera){
-        return camera.getReflectionDepth();
+    static int getReflectionDepth(const RayTracingSampler& RTsampler){
+        return RTsampler.getReflectionDepth();
     }
 };
-template <CameraMode Mode>
-uint32_t SimpleRayTracingTemplate(const Camera& camera, const Scene& scene, const Vec3& viewportP);
+template <SamplingMode Mode>
+uint32_t SimpleRayTracingTemplate(const RayTracingSampler& RTsampler, const Scene& scene, const Vec3& viewportP);
 
-uint32_t SimpleRayTracing(const Camera& camera, const Scene& scene, const Vec3& viewportP);
-
-
-
-inline std::uint32_t blendByReflectivity(std::uint32_t c1, std::uint32_t c2, float reflectivity){
-    reflectivity = std::clamp(reflectivity, 0.0f, 1.0f);
-    float ir = 1.0f - reflectivity;
-    // RRGGBBAA
-    std::uint32_t r = static_cast<std::uint32_t>(
-        ((c1 >> 24) & 0xFF) * ir +
-        ((c2 >> 24)  & 0xFF) * reflectivity + 0.5f);
-    std::uint32_t g = static_cast<std::uint32_t>(
-        ((c1 >> 16) & 0xFF) * ir +
-        ((c2 >> 16) & 0xFF) * reflectivity + 0.5f);
-    std::uint32_t b = static_cast<std::uint32_t>(
-        ((c1 >> 8)  & 0xFF) * ir +
-        ((c2 >> 8)  & 0xFF) * reflectivity + 0.5f);
-    std::uint32_t a = static_cast<std::uint32_t>(
-        ((c1 >> 0)  & 0xFF) * ir +
-        ((c2 >> 0)  & 0xFF) * reflectivity + 0.5f);
-    return (r << 24) | (g << 16) | (b << 8) | (a << 0);
-};
-inline std::uint32_t colorScale(std::uint32_t color, float weight)
-{
-    weight = std::clamp(weight, 0.0f, 1.0f);
-
-    std::uint32_t r = static_cast<std::uint32_t>(
-        ((color >> 24) & 0xFF) * weight + 0.5f);
-    std::uint32_t g = static_cast<std::uint32_t>(
-        ((color >> 16) & 0xFF) * weight + 0.5f);
-    std::uint32_t b = static_cast<std::uint32_t>(
-        ((color >> 8)  & 0xFF) * weight + 0.5f);
-    std::uint32_t a = static_cast<std::uint32_t>(
-        ((color >> 0)  & 0xFF) * weight + 0.5f);
-
-    return (r << 24) | (g << 16) | (b << 8) | a;
-};
+uint32_t SimpleRayTracing(const RayTracingSampler& RTsampler, const Scene& scene, const Vec3& viewportP);
+    
+}
